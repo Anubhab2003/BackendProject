@@ -8,7 +8,7 @@ cloudinary.config({
 });
 console.log(cloudinary.config.cloud_name);
 
-export const uploadOnCloudinary= async (localFilePath)=>{
+const uploadOnCloudinary= async (localFilePath)=>{
     try{
         if(!localFilePath) return null;
         //upload the file on cloudinary
@@ -24,3 +24,4 @@ export const uploadOnCloudinary= async (localFilePath)=>{
     }
 
 }
+export {uploadOnCloudinary}
