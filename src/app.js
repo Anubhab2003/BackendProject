@@ -21,6 +21,6 @@ import userRouter from './routes/user.routes.js'
 //routes declaration
 app.use("/api/v1/users",userRouter)//http://localhost:8000/api/v1/users/register
 
-
+console.log(process.env.PORT,"SERVER PORT UP AND RUNNING");
 
 export default app;
