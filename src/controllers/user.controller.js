@@ -19,7 +19,7 @@ const generateAccessAndRefreshTokens=async(userId)=>{
     }
 }
 const registerUser = asyncHandler( async (req, res) => {
-    // get user details from frontend
+    // get user details from frontend or postman
     // validation - not empty
     // check if user already exists: username, email
     // check for images, check for avatar
@@ -55,9 +55,9 @@ const registerUser = asyncHandler( async (req, res) => {
     //const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
     let coverImageLocalPath;
-    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
-        coverImageLocalPath = req.files.coverImage[0].path
-    }
+    // if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+    //     coverImageLocalPath = req.files.coverImage[0].path
+    // }
     if(req.files && Array.isArray(req.files.coverImage)&& req.files.coverImage.length>0){
         coverImageLocalPath = req.files.coverImage[0].path
 
@@ -93,7 +93,9 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(500, "Something went wrong while registering the user")
     }
 
-    return res.status(201).json(
+    return res
+    .status(201)
+    .json(
         new ApiResponse(200, createdUser, "User registered Successfully")
     )
 
@@ -110,7 +112,7 @@ const loginUser=asyncHandler(async (req,res)=>{
     console.log("We are running")
 
     const {email,username,password}=req.body
-    console.log(req.body)
+    
 
     if(!username && !email){
         throw new ApiError(400,"Username or email is required")
@@ -188,7 +190,7 @@ const logoutUser=asyncHandler(async(req,res)=>{
 })
 
 const refreshAccessToken= asyncHandler(async (req,res)=>{
-    const incomingRefreshToken=req.cookie.refreshToken || req.body.refreshToken
+    const incomingRefreshToken=req.cookie.refreshToken || req.body.refreshToken// body used for mobile application
     if(!incomingRefreshToken){
         throw new ApiError(401,"unauthorize request")
     }
@@ -340,6 +342,77 @@ const updateUserCoverImage=asyncHandler(async(req,res)=>{
    )
 })
 
+const getUserChannelProfile=asyncHandler(async(req,res)=>{
+    const {username}=req.params
+
+    if(!username?.trim()){
+        throw new ApiError(400,"No user found")
+    }
+    //Building aggration pipelines
+    const channel=await User.aggregate([
+        {
+           $match:{
+            username:username?.toLowerCase()
+           } 
+        },
+        {
+            //Find how many sunscriber
+            $lookup:{
+                from:"subscriptions",
+                localField:"_id",
+                foreignField:"channel",
+                as:"subscribers"
+            }
+        },
+        {
+            //Find how many channels that he has subscribe
+            $lookup:{
+                from:"subscriptions",
+                localField:"_id",
+                foreignField:"subscriber",
+                as:"subscribeTo"
+            }
+        },
+        {
+            $addFields:{
+                subscribersCount:{
+                    $size:"$subscribers"
+                },
+                channelsSubscribeToCount:{
+                    $size:"$subscribeTo"
+                },
+                isSubscriber:{
+                    $cond:{
+                        if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+                        then:true,
+                        else:false
+                    }
+                }
+            }
+        },
+        {
+            $project:{
+                fullName:1,
+                username:1,
+                subscribersCount:1,
+                channelsSubscribeToCount:1,
+                isSubscriber:1,
+                avatar:1,
+                coverImage:1
+            }
+        }
+    ])
+    if(!channel?.length){
+        throw new ApiError(404,"Channel does not exist")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,channel[0],"Users Channel retrived successfully")
+    )
+})
+
 export{
     registerUser,
     loginUser,
@@ -349,6 +422,7 @@ export{
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 
 }
